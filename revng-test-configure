@@ -321,12 +321,18 @@ class Configuration:
         # Produce the targets
         type_counts = defaultdict(lambda: 0)
         for command in data["commands"]:
-            self._emit_command(command, type_counts, sources)
+
+            repetitions = [[]]
+            if "repeat-for" in command:
+                repetitions = self.tag_sets[command["repeat-for"]]
+
+            for extra_filter in repetitions:
+                self._emit_command(command, type_counts, sources, extra_filter)
 
         if sources:
             error(f"The following sources are unused:\n  " + "\n  ".join([source.path for source in sources]))
 
-    def _emit_command(self, command, type_counts, sources):
+    def _emit_command(self, command, type_counts, sources, extra_filter):
         command_type = command.get("type", "")
         command_suffix = command.get("suffix", "")
 
@@ -348,10 +354,16 @@ class Configuration:
             "pool": command.get("pool", "")
         }
 
+        def create_expression(input_entry):
+            filter_expression = input_entry.get("filter", "1 == 1")
+            if extra_filter:
+                filter_expression = f"({filter_expression}) and " + " and ".join(extra_filter)
+            return BooleanParser(filter_expression)
+
         inputs = [
             (
                 input_entry["type"],
-                BooleanParser(input_entry.get("filter", "1 == 1"))
+                create_expression(input_entry)
             )
             for input_entry
             in command["from"]
