@@ -321,75 +321,80 @@ class Configuration:
         # Produce the targets
         type_counts = defaultdict(lambda: 0)
         for command in data["commands"]:
-            command_type = command.get("type", "")
-            command_suffix = command.get("suffix", "")
-
-            if command_type in type_counts:
-                type_counts[command_type] += 1
-                command_name = f"{command_type}{type_counts[command_type]}"
-            else:
-                type_counts[command_type] = 1
-                command_name = command_type
-
-            log(f"Parsing command \"{command_name}\"")
-            if command_name in self.commands:
-                error(f"We have two commands with the follwing name: {command_name}")
-
-            self.commands[command_name] = {
-                "suffix": command.get("suffix", ""),
-                "command": command["command"],
-                "scripts": command.get("scripts", {}),
-                "pool": command.get("pool", "")
-            }
-
-            inputs = [
-                (
-                    input_entry["type"],
-                    BooleanParser(input_entry.get("filter", "1 == 1"))
-                )
-                for input_entry
-                in command["from"]
-            ]
-
-            output_tags = self.tags(command.get("tags", []))
-
-            input_targets = []
-            for index, (input_type, input_filter) in enumerate(inputs):
-
-                if input_type not in self.types:
-                    error(f"{command_type} requires an input of type {input_type}, which is unknown")
-
-                input_targets.append([])
-                for target in self.targets:
-                    # Filter on type first
-                    if target.type != input_type:
-                        continue
-
-                    # Evaluate filter next
-                    if self._evaluate(input_filter, target.tags):
-                        input_targets[index].append(target)
-
-            input_targets_list = most_similar_tuples(input_targets)
-
-            if not input_targets_list:
-                error(f"Could not produce any target for {command_type}")
-
-            log(command_type)
-            if not all(input_targets):
-                # Not a valid candidate
-                continue
-
-            for input_targets in input_targets_list:
-                sources = sources - set(input_targets)
-                self._create_target(input_targets,
-                                    output_tags,
-                                    command_name,
-                                    command_type,
-                                    command_suffix)
+            self._emit_command(command, type_counts, sources)
 
         if sources:
             error(f"The following sources are unused:\n  " + "\n  ".join([source.path for source in sources]))
 
+    def _emit_command(self, command, type_counts, sources):
+        command_type = command.get("type", "")
+        command_suffix = command.get("suffix", "")
+
+        if command_type in type_counts:
+            type_counts[command_type] += 1
+            command_name = f"{command_type}{type_counts[command_type]}"
+        else:
+            type_counts[command_type] = 1
+            command_name = command_type
+
+        log(f"Parsing command \"{command_name}\"")
+        if command_name in self.commands:
+            error(f"We have two commands with the follwing name: {command_name}")
+
+        self.commands[command_name] = {
+            "suffix": command.get("suffix", ""),
+            "command": command["command"],
+            "scripts": command.get("scripts", {}),
+            "pool": command.get("pool", "")
+        }
+
+        inputs = [
+            (
+                input_entry["type"],
+                BooleanParser(input_entry.get("filter", "1 == 1"))
+            )
+            for input_entry
+            in command["from"]
+        ]
+
+        output_tags = self.tags(command.get("tags", []))
+
+        input_targets = []
+        for index, (input_type, input_filter) in enumerate(inputs):
+
+            if input_type not in self.types:
+                error(f"{command_type} requires an input of type {input_type}, which is unknown")
+
+            input_targets.append([])
+            for target in self.targets:
+                # Filter on type first
+                if target.type != input_type:
+                    continue
+
+                # Evaluate filter next
+                if self._evaluate(input_filter, target.tags):
+                    input_targets[index].append(target)
+
+        input_targets_list = most_similar_tuples(input_targets)
+
+        if not input_targets_list:
+            error(f"Could not produce any target for {command_type}")
+
+        log(command_type)
+        if not all(input_targets):
+            # Not a valid candidate
+            return
+
+        for input_targets in input_targets_list:
+            for input_target in set(input_targets):
+                if input_target in sources:
+                    sources.remove(input_target)
+
+            self._create_target(input_targets,
+                                output_tags,
+                                command_name,
+                                command_type,
+                                command_suffix)
 
     def _create_target(self,
                        input_targets,
