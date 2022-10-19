@@ -180,6 +180,7 @@ SafeLoaderIgnoreUnknown.add_constructor(None, SafeLoaderIgnoreUnknown.ignore_unk
 class Configuration:
     def __init__(self, data, allowed_types, filter, install_path):
         self.tags_list = {}
+        self.tag_sets = {}
         self.targets = []
         self.commands = {}
         self.types = set(["source"])
@@ -190,6 +191,7 @@ class Configuration:
         self.filter = BooleanParser(filter)
 
         self._load_tags(data)
+        self._load_tag_sets(data)
         self._load_sources(data)
         self._load_commands(data)
 
@@ -251,6 +253,10 @@ class Configuration:
 
             tag.variables.parse(tag_object.get("variables", {}))
 
+    def _load_tag_sets(self, data):
+        log("Parsing tag sets")
+        self.tag_sets = data["tag_sets"]
+
     def _load_sources(self, data):
         log("Parsing sources")
 
@@ -265,18 +271,21 @@ class Configuration:
             if not (self.install_path / path).exists():
                 error(f"Can't find source file {path}")
 
-            for repetition in group.get("repeat-for", [[]]):
+            repetitions = [[]]
+            if "repeat-for" in group:
+                repetitions = self.tag_sets[group["repeat-for"]]
+
+            for repetition in repetitions:
                 source_tags = tags + [tag
                                       for tag
                                       in self.tags(repetition)
                                       if tag not in tags]
+                suffix = "-" + "-".join(repetition) if repetition else ""
                 source_target = Target(type="source",
                                        path=path,
                                        source_path=path,
                                        derived_targets_prefix=(os.path.splitext(path)[0]
-                                                               + ("-" + "-".join(repetition)
-                                                                  if repetition
-                                                                  else "")),
+                                                               + suffix),
                                        tags=source_tags,
                                        command="")
                 for tag in source_tags:

@@ -9,9 +9,9 @@ tags:
         - -fno-pie
         - -ggdb3
         - -fno-stack-protector
-sources:
-  - tags: [for-runtime, for-comparison]
-    repeat-for:
+
+tag_sets:
+  runtime-configurations:
     - [arm, static]
     - [mips, static]
     - [mipsel, static]
@@ -20,6 +20,10 @@ sources:
     - [s390x, static]
     - [native, dynamic]
     - [i386, static]
+
+sources:
+  - tags: [for-runtime, for-comparison]
+    repeat-for: runtime-configurations
     members:
     - tests/runtime/function-call.c
     - tests/runtime/floating-point.c
@@ -27,14 +31,6 @@ sources:
     - tests/runtime/global.c
     - tests/runtime/printf.c
   - tags: [for-runtime, for-comparison, one-per-architecture]
-    repeat-for:
-    - [arm, static]
-    - [mips, static]
-    - [mipsel, static]
-    - [aarch64, static]
-    - [x86-64, static]
-    - [s390x, static]
-    - [native, dynamic]
-    - [i386, static]
+    repeat-for: runtime-configurations
     members:
     - tests/runtime/calc.c
