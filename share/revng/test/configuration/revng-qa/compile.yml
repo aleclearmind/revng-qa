@@ -9,3 +9,9 @@ commands:
       - type: revng-qa.compiled
     suffix: .S
     command: ${TRIPLE}objdump $OBJDUMP_FLAGS -d $INPUT > $OUTPUT
+  - type: revng-qa.rotfl
+    repeat-for: runtime-configurations
+    from:
+      - type: revng-qa.compiled
+      - type: revng-qa.disassembled
+    command: echo $INPUT1 $INPUT2 > $OUTPUT
