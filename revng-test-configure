@@ -708,7 +708,12 @@ def main():
             loaded = yaml.load(input_file, Loader=SafeLoaderIgnoreUnknown) or {}
             for key, value in loaded.items():
                 if key in data:
-                    data[key] += value
+                    if type(data[key]) is dict:
+                        data[key].update(value)
+                    elif type(data[key]) is list:
+                        data[key] += value
+                    else:
+                        raise ValueError(f"{key} has unexpected type")
                 else:
                     data[key] = value
 
