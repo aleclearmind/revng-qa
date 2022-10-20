@@ -334,6 +334,8 @@ class Configuration:
 
     def _emit_command(self, command, type_counts, sources, extra_filter):
         command_type = command.get("type", "")
+        if extra_filter:
+            command_type += "-" + "-".join(extra_filter)
         command_suffix = command.get("suffix", "")
 
         if command_type in type_counts:
